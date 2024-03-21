@@ -14,7 +14,7 @@ We considered multiple AI models to solve this issue, starting at the least tech
 
 ### Decision Trees and Shallow Neural Networks
 
-In order to use these techniques, we needed to create a dataset that would allow us to compare the semantic similarity between the keyword and the search term (Similarity Score). To get this measurement, we used sentence embeddings and applied cosine similarity to get the similarity between both terms. We implemented the SentenceTransformers library to get the required transformers and other mathematical tools. 
+In order to use these techniques, we needed to create a dataset that would allow us to compare the semantic similarity between the keyword and the search term (Similarity Score). To get this measurement, we used sentence embeddings and applied cosine similarity to get the similarity between both terms. We implemented the [SentenceTransformers library](https://www.sbert.net/) to get the required transformers and other mathematical tools. 
 
 Additionally, we used hot-one encoding to turn into numerical information the match type of a keyword (Exact, Phrase and Broad). This information was essential as different match types are more likely to attract out-of-target searches than others.
 
@@ -22,41 +22,41 @@ As an additional data point, we also got the average similarity of a term with a
 
 The dataset was not balanced, with close to 20,000 rows labeled as “None” (2) and merely 10000 labeled as either “Excluded” (1) or “Added” (0). 
 
-ADD MISSING IMAGE
+![Class counts](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/1.png)
 
 Moreover, we analyzed the correlations between the variables to check if the data points were indeed relevant and made sense based on empirical experience.
 
-ADD MISSING IMAGE
+![Feature Correlations](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/2.png)
 
 Once the dataset was created, we trained a Scikit Learn DecisionTreeClassifier model. As measurements for performance, we used accuracy and precision, since we need the model to predict as many correct labels as possible while doing so consistently.
 
 We used multiple iterations of the decision tree, comparing the performance using different criterions (gini, log_loss, entropy) and class weights. The gini criterion without class weights seemed to perform better than any other iteration, however the performance difference was not big enough to consider it statistically significant. Regardless of the depth of the tree and the number of leaves, the model always achieved roughly 67% accuracy and precision.
 
-ADD MISSING IMAGE
+![Accuracy](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/3.png)
 
 However, it is important to highlight that the model gave reasonable importance to the variables in the dataset. The model is correct in understanding that a keyword that has a higher Similarity Score and Keyword vs Account Similarity, as well as being matched to an Exact Match keyword, is more likely to be included.
 
-ADD MISSING IMAGE
+![Importance Scores](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/4.png)
 
 Considering that the accuracy and the precision of the model were not high enough to reliably deploy a decision tree in production, we then proceeded to train a neural network on the same dataset.
 
 Using Pytorch, we created a neural network with 5 layers with ReLU activations for the outputs of the input and hidden layers and softmax for the output layer. We then proceed to train the model over 100 epochs with the following hyperparameters:
 
-ADD MISSING IMAGE
+![Training Parameters](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/5.png)
 
 Once the model was trained, we got performance similar to the decision tree, with accuracy at about 64% in both training and validation sets.
 
-ADD MISSING IMAGE
+![Training and Testing Accuracy](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/6.png)
 
 The model did seem to get stuck early in the training process, meaning either low learning or hitting a local minima.
 
-ADD MISSING IMAGE
+![Training and Testing Loss](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/7.png)
 
 Analyzing the plateau in accuracy and similar performance from the decision tree, it is very possible that the model was not able to learn from the data either due to the imbalance of the dataset classes or simply because the data does not show significant enough correlations to accurately predict the results.
 
 With the above considerations in mind, we decided this approach was not scalable due to the amount of preprocessing it required. For each term, we needed to turn every term-keyword pair into a transformer and compute the cosine similarity between the pair and between the term and all the keywords in the account, making it a very slow and expensive process.
 
-You can check the relevant Jupyter Notebook here.
+You can check the relevant Jupyter Notebook [here](https://github.com/CatosCrack/NegativeKeywords/blob/main/Neural%20Network/Word_Embeddings_Search_Terms.ipynb).
 
 ### Hugging Face’s roBERTa Implementation
 Understanding that we needed to keep preprocessing to a minimum, we then decided to use a BERT implementation that would allow us to simply input the term-keyword pair and get a label.
@@ -65,13 +65,13 @@ To achieve this, we turned to roBERTa for Sequence Classification. With a relati
 
 Since roBERTa is a deep model, we needed to improve the quality of our training data. For that, we improved the frequency balance of the dataset and increased the number of samples. In total, our new dataset has 259,875 samples with exactly 86,625 samples for each of the classes (Added, Excluded, None).
 
-ADD MISSING IMAGE
+![Class counts](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/8.png)
 
 Secondly, because roBERTa uses tokenization to process input data, we also removed all special characters that keywords might contain. By removing the [], +, and “” from all the keywords, this allows the model to focus exclusively on the semantics of the keyword and not its match type.
 
 Thirdly, considering that the tokenization process needs to cap the length of the tokens for better results, we had to calculate the average keyword and search term length to choose a limit.
 
-ADD MISSING IMAGE
+![Average Length](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/9.png)
 
 To create the required DataLoaders for the process, we created term-keyword pairs and concatenated both tokenized inputs with a special character to let the model understand that the tensors contained more than one piece of information. We also added a special CLS token, necessary for the model to gather sentence-wide data and classify the pair appropriately.
 
@@ -80,11 +80,14 @@ Once the tokenized data was ready, we downloaded a roberta-base model with the p
 #### First Training Iteration - Batch Size 64
 For this iteration, we used a batch size of 64. The following hyperparameters were used for training the model:
 
-ADD MISSING IMAGE
+![Training Parameters](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/10.png)
 
 After the initial training, the results were not as accurate as the decision tree or the neural network. However, keep in mind that the results of these models were calculated using a much smaller dataset and might not be fully comparable.
 
-ADD MISSING IMAGE
+![Training Accuracy](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/11.png)
+![Training Loss](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/12.png)
+![Testing Accuracy](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/13.png)
+![Testing Loss](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/14.png)
 
 In order to improve accuracy, we decided to test using different batch sizes and changing the model classifier to provide more depth to the architecture. The results of these variations can be seen below.
 
@@ -93,25 +96,34 @@ For the second iteration of the model, we compared both a smaller and larger bat
 
 Even though the accuracy was higher in both testing and training for the model using a batch size of 16, there was a steeper improvement in performance for the model with a batch size of 512. Considering this finding, we will use a larger batch size with a custom classifier head and longer training time for the next iteration.
 
-ADD MISSING IMAGE
+![Training Accuracy](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/15.png)
+![Training Loss](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/16.png)
+![Testing Accuracy](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/17.png)
+![Testing Loss](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/18.png)
 
 #### Third Training Iteration - Custom Classifier Head
 For the third model iteration, I added a custom classification head to see if I could improve the accuracy with additional architecture depth.
 
 This was the custom classifier implemented:
 
-ADD MISSING IMAGE
+![Classifier Architecture](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/19.png)
 
 The classifier was able to achieve higher accuracy than the base model architecture, although not by a large margin. For future iterations out of the scope of this experience, we could consider adding even more depth, increasing the number of nodes per layer or using different layer activations.
 
-ADD MISSING IMAGE
+![Training Accuracy](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/20.png)
+![Training Loss](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/21.png)
+![Testing Accuracy](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/22.png)
+![Testing Loss](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/23.png)
 
 #### Fourth Training Iteration - No DataSet Shuffle & Full Model Training
 For the final iteration of the model, I decided to test the impact of removing shuffling at the dataset level. Although not recommended because this can cause overfitting to the specific dataset, I still wanted to see if there would be any significant impact.
 
 To my surprise, the model performed similarly, reaching almost identical performance on the 15th epoch. However, the loss decreased more in the model that had shuffling active, which might indicate a better ability to generalize the weights enough for a wider variety of scenarios.
 
-ADD MISSING IMAGE
+![Training Accuracy](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/24.png)
+![Training Loss](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/25.png)
+![Testing Accuracy](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/26.png)
+![Testing Loss](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/27.png)
 
 For these reasons, I decided to use the pretrained model that used shuffling and train it for 30 epochs.
 
@@ -120,11 +132,12 @@ Since the model had already been trained, I decided to implement a learning rate
 
 The results of the final model can be seen on the graph:
 
-ADD MISSING IMAGE
+![Testing Accuracy](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/28.png)
+![Testing Loss](https://github.com/CatosCrack/NegativeKeywords/blob/main/images/29.png)
 
 A final accuracy of 70% was achieved on the testing dataset, which surpases the performance of the decision tree and the neural network. This was a positive outcome considering the amount of preprocessing required is limited to the tokenization of the sentence pairs, as opposed to the more complicated cosine difference calculated for the previous approach.
 
-You can check the notebook for this model here.
+You can check the notebook for this model [here](https://github.com/CatosCrack/NegativeKeywords/blob/main/Roberta/RoBERTA_implementation_Search_Terms.ipynb).
 
 ## Conclusions
 The results from this experience show that automating this task is possible with a transformer model and is very achievable.
