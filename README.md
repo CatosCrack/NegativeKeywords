@@ -61,7 +61,7 @@ You can check the relevant Jupyter Notebook [here](https://github.com/CatosCrack
 ### Hugging Face’s roBERTa Implementation
 Understanding that we needed to keep preprocessing to a minimum, we then decided to use a BERT implementation that would allow us to simply input the term-keyword pair and get a label.
 
-To achieve this, we turned to roBERTa for Sequence Classification. With a relatively easy implementation, this was the most likely model to perform well in production for a language processing task.
+To achieve this, we turned to [roBERTa for Sequence Classification](https://huggingface.co/docs/transformers/model_doc/roberta#transformers.RobertaForSequenceClassification). With a relatively easy implementation, this was the most likely model to perform well in production for a language processing task.
 
 Since roBERTa is a deep model, we needed to improve the quality of our training data. For that, we improved the frequency balance of the dataset and increased the number of samples. In total, our new dataset has 259,875 samples with exactly 86,625 samples for each of the classes (Added, Excluded, None).
 
