@@ -144,4 +144,5 @@ The results from this experience show that automating this task is possible with
 
 For future iterations, I am planning to simplify the training data by removing the “Added” class. Based on the needs of PPC managers, the most time-consuming and sensitive aspect of this task is finding all the irrelevant searches and making sure that relevant searches are not excluded by mistake.
 
-By focusing only on two categories (None and Excluded), we can ensure that the accuracy for the excluded category is higher and make the model less prone to cause labelling issues that could negatively impact the job of a PPC manager. Additionally, our database also contains more sentence pairs labelled as None and Excluded, enabling me to train the model with significantly more data.
+By focusing only on two categories (None and Excluded), we can ensure that the accuracy for the excluded category is higher and make the model less prone to labelling issues that could negatively impact an ads account. Additionally, our database also contains more sentence pairs labelled as None and Excluded, enabling me to train the model with significantly more data.
+
